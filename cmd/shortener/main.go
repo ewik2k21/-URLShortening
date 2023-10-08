@@ -5,34 +5,32 @@ import (
 	"math/rand"
 	"net/http"
 	"strings"
-
-	"github.com/gin-gonic/gin"
 )
 
 var links = make(map[string]string)
 
 func main() {
-	router := gin.Default()
-	router.GET("/get/:id", getURL)
-	router.POST("/", postURL)
-	err := router.Run("localhost:8080")
+	http.HandleFunc("/", postURL)
+	http.HandleFunc("/get/", getURL)
+	err := http.ListenAndServe(`:8080`, nil)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func postURL(c *gin.Context) {
+func postURL(w http.ResponseWriter, r *http.Request) {
 	id := GenerateUniqeString()
-	body, err := io.ReadAll(c.Request.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
 	}
 	links[id] = string(body)
-	c.String(http.StatusCreated, "http://localhost:8080/"+id+" "+links[id])
+	w.Write([]byte("http://localhost:8080/" + links[id]))
 }
-
-func getURL(c *gin.Context) {
-	c.String(http.StatusTemporaryRedirect, "Location:"+links[c.Param("id")])
+func getURL(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/get/")
+	w.WriteHeader(http.StatusTemporaryRedirect)
+	w.Write([]byte(links[id]))
 }
 
 // func for generate string (id) for Get method get/{id}
