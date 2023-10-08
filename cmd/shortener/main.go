@@ -11,7 +11,7 @@ var links = make(map[string]string)
 
 func main() {
 	http.HandleFunc("/", postURL)
-	http.HandleFunc("/get", getURL)
+	http.HandleFunc("/get/", getURL)
 	err := http.ListenAndServe(`:8080`, nil)
 	if err != nil {
 		panic(err)
@@ -26,10 +26,10 @@ func postURL(w http.ResponseWriter, r *http.Request) {
 	}
 	links[id] = string(body)
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("http://localhost:8080" + links[id]))
+	w.Write([]byte("http://localhost:8080/" + links[id]))
 }
 func getURL(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/get")
+	id := strings.TrimPrefix(r.URL.Path, "/get/")
 	w.WriteHeader(http.StatusTemporaryRedirect)
 	w.Write([]byte(links[id]))
 
