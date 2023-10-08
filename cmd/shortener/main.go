@@ -30,8 +30,8 @@ func postURL(w http.ResponseWriter, r *http.Request) {
 }
 func getURL(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/get/")
+	w.Header().Set("Location", links[id])
 	w.WriteHeader(http.StatusTemporaryRedirect)
-	w.Write([]byte(links[id]))
 
 }
 
