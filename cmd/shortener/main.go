@@ -25,6 +25,7 @@ func postURL(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	}
 	links[id] = string(body)
+	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte("http://localhost:8080/" + links[id]))
 }
 func getURL(w http.ResponseWriter, r *http.Request) {
