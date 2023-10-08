@@ -10,35 +10,47 @@ import (
 var links = make(map[string]string)
 
 func main() {
-	http.HandleFunc("/", postURL)
-	http.HandleFunc("/get/", getURL)
+	http.HandleFunc("/", methodSelector)
 	err := http.ListenAndServe(`:8080`, nil)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func postURL(w http.ResponseWriter, r *http.Request) {
-	id := GenerateUniqeString()
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+func methodSelector(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodPost:
+		postURL(w, r)
+	case http.MethodGet:
+		getURL(w, r)
 	}
-	links[id] = string(body)
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("http://localhost:8080/" + links[id]))
 }
+
+func postURL(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		id := GenerateUniqeString(8)
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+		links[id] = string(body)
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("http://localhost:8080/" + links[id]))
+	}
+}
+
 func getURL(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/get/")
-	w.Header().Set("Location", links[id])
-	w.WriteHeader(http.StatusTemporaryRedirect)
+	if r.Method == http.MethodGet {
+		id := strings.TrimPrefix(r.URL.Path, "/")
+		w.Header().Set("Location", links[id])
+		w.WriteHeader(http.StatusTemporaryRedirect)
+	}
 
 }
 
 // func for generate string (id) for Get method get/{id}
-func GenerateUniqeString() string {
+func GenerateUniqeString(lenght int) string {
 	chars := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "abcdefghijklmnopqrstuvwxyz" + "0123456789")
-	lenght := 8
 	var b strings.Builder
 	for i := 0; i < lenght; i++ {
 		b.WriteRune(chars[rand.Intn(len(chars))])
