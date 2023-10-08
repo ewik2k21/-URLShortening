@@ -27,25 +27,20 @@ func methodSelector(w http.ResponseWriter, r *http.Request) {
 }
 
 func postURL(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		id := GenerateUniqeString(8)
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-		}
-		links[id] = string(body)
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte("http://localhost:8080/" + links[id]))
+	id := GenerateUniqeString(8)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 	}
+	links[id] = string(body)
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte("http://localhost:8080/" + id))
 }
 
 func getURL(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		id := strings.TrimPrefix(r.URL.Path, "/")
-		w.Header().Set("Location", links[id])
-		w.WriteHeader(http.StatusTemporaryRedirect)
-	}
-
+	id := strings.TrimPrefix(r.RequestURI, "/")
+	w.Header().Set("Location", links[id])
+	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
 // func for generate string (id) for Get method get/{id}
