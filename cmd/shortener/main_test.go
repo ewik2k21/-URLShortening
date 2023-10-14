@@ -1,13 +1,20 @@
 package main
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
+
+func SetUpRouter() *gin.Engine {
+	router := gin.Default()
+	return router
+}
 
 // test PostUrl
 func Test_postURL(t *testing.T) {
@@ -34,14 +41,17 @@ func Test_postURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			r := SetUpRouter()
+			r.POST("/", postURL)
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.body))
+
 			w := httptest.NewRecorder()
-			postURL(w, request)
+			r.ServeHTTP(w, request)
 
-			res := w.Result()
+			responseData, _ := io.ReadAll(w.Body)
 
-			assert.Equal(t, tt.want.statusCode, res.StatusCode)
-			assert.NotNil(t, res.Body)
+			assert.Equal(t, tt.want.statusCode, w.Code)
+			assert.NotNil(t, responseData)
 		})
 	}
 }
@@ -66,9 +76,10 @@ func Test_getURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			r := SetUpRouter()
 			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
 			w := httptest.NewRecorder()
-			getURL(w, request)
+			r.ServeHTTP(w, request)
 
 			res := w.Result()
 

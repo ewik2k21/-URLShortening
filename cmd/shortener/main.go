@@ -2,45 +2,51 @@ package main
 
 import (
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 var links = make(map[string]string)
 
 func main() {
-	http.HandleFunc("/", methodSelector)
-	err := http.ListenAndServe(`:8080`, nil)
+	router := gin.Default()
+	router.Use(methodSelector)
+	err := router.Run(`:8080`)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }
-
-func methodSelector(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
+func methodSelector(c *gin.Context) {
+	switch c.Request.Method {
 	case http.MethodPost:
-		postURL(w, r)
+		postURL(c)
 	case http.MethodGet:
-		getURL(w, r)
+		getURL(c)
 	}
 }
 
-func postURL(w http.ResponseWriter, r *http.Request) {
+func getURL(c *gin.Context) {
+	id := strings.TrimPrefix(c.Request.URL.Path, "/")
+	c.Writer.Header().Set("Location", links[id])
+	c.Status(http.StatusTemporaryRedirect)
+}
+
+func postURL(c *gin.Context) {
 	id := GenerateUniqeString(8)
-	body, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		c.Status(400)
+		return
 	}
 	links[id] = string(body)
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("http://localhost:8080/" + id))
-}
+	c.Status(http.StatusCreated)
+	c.Writer.Header().Set("Content-Type", "text/plain")
+	c.Writer.Write([]byte("http://localhost:8080/" + id))
 
-func getURL(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.RequestURI, "/")
-	w.Header().Set("Location", links[id])
-	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
 // func for generate string (id) for Get method get/{id}
