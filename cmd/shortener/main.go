@@ -7,15 +7,17 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ewik2k21/-URLShortening/cmd/config"
 	"github.com/gin-gonic/gin"
 )
 
 var links = make(map[string]string)
 
 func main() {
+	config.ParseFlags()
 	router := gin.Default()
 	router.Use(methodSelector)
-	err := router.Run(`:8080`)
+	err := router.Run(config.FlagA)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -45,7 +47,7 @@ func postURL(c *gin.Context) {
 	links[id] = string(body)
 	c.Status(http.StatusCreated)
 	c.Writer.Header().Set("Content-Type", "text/plain")
-	c.Writer.Write([]byte("http://localhost:8080/" + id))
+	c.Writer.Write([]byte("http://localhost" + config.FlagA + "/" + id))
 
 }
 
