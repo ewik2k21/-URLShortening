@@ -17,6 +17,7 @@ func main() {
 	config.ParseFlags()
 	router := gin.Default()
 	router.Use(methodSelector)
+
 	err := router.Run(config.FlagA)
 	if err != nil {
 		log.Fatal(err)
@@ -47,7 +48,11 @@ func postURL(c *gin.Context) {
 	links[id] = string(body)
 	c.Status(http.StatusCreated)
 	c.Writer.Header().Set("Content-Type", "text/plain")
-	c.Writer.Write([]byte("http://localhost" + config.FlagA + "/" + id))
+	if strings.Contains(config.FlagB, "http") {
+		c.Writer.Write([]byte(config.FlagB + "/" + id))
+		return
+	}
+	c.Writer.Write([]byte("http://" + config.FlagB + "/" + id))
 
 }
 
