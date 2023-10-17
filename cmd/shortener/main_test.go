@@ -76,12 +76,14 @@ func Test_getURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
 			r := SetUpRouter()
 			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
 			w := httptest.NewRecorder()
 			r.ServeHTTP(w, request)
 
 			res := w.Result()
+			defer res.Body.Close()
 
 			assert.Equal(t, tt.want.statusCode, http.StatusTemporaryRedirect)
 			assert.NotNil(t, res.Body)
