@@ -17,12 +17,13 @@ func main() {
 	config.ParseFlags()
 	router := gin.Default()
 	router.Use(methodSelector)
-
 	err := router.Run(config.FlagA)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
+
+// TODO remove methodSelector
 func methodSelector(c *gin.Context) {
 	switch c.Request.Method {
 	case http.MethodPost:
