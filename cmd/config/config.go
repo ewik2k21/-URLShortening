@@ -5,17 +5,17 @@ import (
 	"os"
 )
 
-var FlagA string
-var FlagB string
+var FlagPort string
+var FlagBaseURL string
 
 func ParseFlags() {
-	flag.StringVar(&FlagA, "a", ":8080", "port for server")
-	flag.StringVar(&FlagB, "b", "localhost"+FlagA, "base address result")
+	flag.StringVar(&FlagPort, "a", ":8080", "port for server")
+	flag.StringVar(&FlagBaseURL, "b", "localhost"+FlagPort, "base address result")
 	if baseURL, err := os.LookupEnv("BASE_URL"); err {
-		FlagB = baseURL
+		FlagBaseURL = baseURL
 	}
 	if envServerAddress := os.Getenv("SERVER_ADDRESS"); envServerAddress != "" {
-		FlagA = envServerAddress
+		FlagPort = envServerAddress
 	}
 
 	flag.Parse()
