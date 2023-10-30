@@ -9,6 +9,8 @@ import (
 	"sync"
 
 	"github.com/ewik2k21/-URLShortening/cmd/config"
+	"github.com/ewik2k21/-URLShortening/internal/app/logger"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -22,14 +24,26 @@ var shortLinks = Links{
 }
 
 func main() {
+	if err := initializeLogger(); err != nil {
+		panic(err)
+	}
 	config.ParseFlags()
-	router := gin.Default()
+	router := gin.New()
+	router.Use(logger.RequestLogger())
+	router.Use(logger.ResponseLogger())
 	router.GET("/:id", getURL)
 	router.POST("/", postURL)
 	err := router.Run(config.FlagPort)
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func initializeLogger() error {
+	if err := logger.Initialize(config.FlagLogLevel); err != nil {
+		return err
+	}
+	return nil
 }
 
 func getURL(c *gin.Context) {
@@ -63,7 +77,6 @@ func postURL(c *gin.Context) {
 	}
 
 	c.Writer.Write([]byte("http://" + config.FlagBaseURL + "/" + id))
-
 }
 
 // func for generate string (id) for Get method get/{id}
