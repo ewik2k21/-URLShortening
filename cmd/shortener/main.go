@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/gin-contrib/gzip"
 	"io"
 	"log"
 	"math/rand"
@@ -10,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/ewik2k21/-URLShortening/cmd/config"
+	"github.com/ewik2k21/-URLShortening/internal/app/compressor"
 	"github.com/ewik2k21/-URLShortening/internal/app/logger"
 
 	"github.com/gin-gonic/gin"
@@ -38,8 +40,11 @@ func main() {
 	}
 	config.ParseFlags()
 	router := gin.New()
+	router.Use(gzip.Gzip(gzip.DefaultCompression))
+	router.Use(compressor.DecompressBody())
 	router.Use(logger.RequestLogger())
 	router.Use(logger.ResponseLogger())
+
 	router.GET("/:id", getURL)
 	router.POST("/", postURL)
 	router.POST("/api/shorten", postShortenURL)
@@ -99,10 +104,9 @@ func getURL(c *gin.Context) {
 	id := c.Param("id")
 
 	shortLinks.mu.Lock()
-	c.Writer.Header().Set("Location", shortLinks.links[id])
-	shortLinks.mu.Unlock()
-
+	c.Header("Location", shortLinks.links[id])
 	c.Status(http.StatusTemporaryRedirect)
+	shortLinks.mu.Unlock()
 }
 
 func postURL(c *gin.Context) {

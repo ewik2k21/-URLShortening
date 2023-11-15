@@ -48,6 +48,7 @@ func ResponseLogger() gin.HandlerFunc {
 		Log.Sugar().Infoln(
 			"statusCode", ctx.Writer.Status(),
 			"content-size", ctx.Writer.Size(),
+			"location", ctx.GetHeader("Location"),
 		)
 	}
 }
