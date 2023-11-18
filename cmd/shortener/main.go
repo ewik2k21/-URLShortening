@@ -7,14 +7,15 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 
 	"github.com/ewik2k21/-URLShortening/cmd/config"
 	"github.com/ewik2k21/-URLShortening/internal/app/compressor"
 	"github.com/ewik2k21/-URLShortening/internal/app/logger"
-
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type Links struct {
@@ -25,6 +26,14 @@ type Links struct {
 type LinkInput struct {
 	URL string `json:"url"`
 }
+
+type FileData struct {
+	UUID        string `json:"uuid"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+}
+
+var fileData FileData
 
 type LinkOutput struct {
 	Result string `json:"result"`
@@ -44,7 +53,6 @@ func main() {
 	router.Use(compressor.DecompressBody())
 	router.Use(logger.RequestLogger())
 	router.Use(logger.ResponseLogger())
-
 	router.GET("/:id", getURL)
 	router.POST("/", postURL)
 	router.POST("/api/shorten", postShortenURL)
@@ -98,6 +106,12 @@ func postShortenURL(c *gin.Context) {
 	}
 	c.Data(http.StatusCreated, "application/json", serializedLink)
 
+	AddToFileData(id, linkInput.URL)
+
+	err = WriteDataToFileAsJSON(fileData, config.FlagFileName)
+	if err != nil {
+		return
+	}
 }
 
 func getURL(c *gin.Context) {
@@ -130,6 +144,12 @@ func postURL(c *gin.Context) {
 	}
 
 	c.Writer.Write([]byte("http://" + config.FlagBaseURL + "/" + id))
+	AddToFileData(id, string(body))
+
+	err = WriteDataToFileAsJSON(fileData, config.FlagFileName)
+	if err != nil {
+		return
+	}
 }
 
 // func for generate string (id) for Get method get/{id}
@@ -140,4 +160,19 @@ func GenerateUniqeString(lenght int) string {
 		b.WriteRune(chars[rand.Intn(len(chars))])
 	}
 	return b.String()
+}
+
+func WriteDataToFileAsJSON(input FileData, filedir string) error {
+
+	data, err := json.MarshalIndent(input, "", " ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filedir, data, 0666)
+}
+
+func AddToFileData(id string, originalURL string) {
+	fileData.ShortURL = id
+	fileData.OriginalURL = originalURL
+	fileData.UUID = uuid.New().String()
 }

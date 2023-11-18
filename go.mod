@@ -4,6 +4,7 @@ go 1.21.1
 
 require (
 	github.com/gin-contrib/gzip v0.0.6
+	github.com/google/uuid v1.4.0
 	go.uber.org/zap v1.26.0
 )
 
