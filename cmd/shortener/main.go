@@ -19,7 +19,7 @@ import (
 )
 
 type Links struct {
-	mu    sync.Mutex `json:"-"`
+	mu    sync.Mutex
 	links map[string]string
 }
 
@@ -168,7 +168,12 @@ func WriteDataToFileAsJSON(input FileData, filedir string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filedir, data, 0666)
+	file, err := os.OpenFile(filedir, os.O_APPEND|os.O_RDWR, 0666)
+	if err != nil {
+		return os.WriteFile(filedir, data, 0666)
+	}
+	file.Write(data)
+	return nil
 }
 
 func AddToFileData(id string, originalURL string) {

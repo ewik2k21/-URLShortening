@@ -90,3 +90,44 @@ func Test_getURL(t *testing.T) {
 		})
 	}
 }
+
+func Test_postShortenURL(t *testing.T) {
+	type want struct {
+		statusCode  int
+		contentType string
+		body        string
+	}
+
+	tests := []struct {
+		name    string
+		want    want
+		request string
+		body    string
+	}{
+		{
+			name: "test post method /api/shorten",
+			want: want{
+				statusCode:  201,
+				contentType: "text/json",
+				body:        "{\n    \"url\": \"cringe\"\n}",
+			},
+			request: "/api/shorten",
+			body:    "{\n    \"url\": \"cringe\"\n}",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := SetUpRouter()
+			r.POST("/api/shorten", postShortenURL)
+			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.body))
+
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, request)
+
+			responseData, _ := io.ReadAll(w.Body)
+
+			assert.Equal(t, tt.want.statusCode, w.Code)
+			assert.NotNil(t, responseData)
+		})
+	}
+}
