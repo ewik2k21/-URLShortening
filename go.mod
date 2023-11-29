@@ -3,6 +3,12 @@ module github.com/ewik2k21/-URLShortening
 go 1.21.1
 
 require (
+	github.com/gin-contrib/gzip v0.0.6
+	github.com/google/uuid v1.4.0
+	go.uber.org/zap v1.26.0
+)
+
+require (
 	github.com/bytedance/sonic v1.10.2 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d // indirect
 	github.com/chenzhuoyu/iasm v0.9.0 // indirect
@@ -35,6 +41,5 @@ require (
 require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/stretchr/testify v1.8.4
-	go.uber.org/zap v1.26.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

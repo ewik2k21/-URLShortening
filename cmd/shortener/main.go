@@ -1,15 +1,21 @@
 package main
 
 import (
+	"encoding/json"
+	"github.com/gin-contrib/gzip"
 	"io"
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 
 	"github.com/ewik2k21/-URLShortening/cmd/config"
+	"github.com/ewik2k21/-URLShortening/internal/app/compressor"
+	"github.com/ewik2k21/-URLShortening/internal/app/logger"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type Links struct {
@@ -17,18 +23,94 @@ type Links struct {
 	links map[string]string
 }
 
+type LinkInput struct {
+	URL string `json:"url"`
+}
+
+type FileData struct {
+	UUID        string `json:"uuid"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+}
+
+var fileData FileData
+
+type LinkOutput struct {
+	Result string `json:"result"`
+}
+
 var shortLinks = Links{
 	links: make(map[string]string),
 }
 
 func main() {
+	if err := initializeLogger(); err != nil {
+		panic(err)
+	}
 	config.ParseFlags()
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gzip.Gzip(gzip.DefaultCompression))
+	router.Use(compressor.DecompressBody())
+	router.Use(logger.RequestLogger())
+	router.Use(logger.ResponseLogger())
 	router.GET("/:id", getURL)
 	router.POST("/", postURL)
+	router.POST("/api/shorten", postShortenURL)
 	err := router.Run(config.FlagPort)
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func initializeLogger() error {
+	if err := logger.Initialize(config.FlagLogLevel); err != nil {
+		return err
+	}
+	return nil
+}
+
+func postShortenURL(c *gin.Context) {
+	id := GenerateUniqeString(8)
+	var linkInput LinkInput
+	var linkOutput LinkOutput
+
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	if err = json.Unmarshal(body, &linkInput); err != nil {
+		c.Error(err)
+		return
+	}
+
+	shortLinks.mu.Lock()
+	shortLinks.links[id] = linkInput.URL
+	shortLinks.mu.Unlock()
+
+	if strings.Contains(config.FlagBaseURL, "http") {
+		linkOutput.Result = config.FlagBaseURL + "/" + id
+		serializedLink, err := json.MarshalIndent(linkOutput, "", "   ")
+		if err != nil {
+			c.Error(err)
+		}
+		c.Data(http.StatusCreated, "application/json", serializedLink)
+		return
+	}
+
+	linkOutput.Result = "http://" + config.FlagBaseURL + "/" + id
+	serializedLink, err := json.MarshalIndent(linkOutput, "", " ")
+	if err != nil {
+		c.Error(err)
+	}
+	c.Data(http.StatusCreated, "application/json", serializedLink)
+
+	AddToFileData(id, linkInput.URL)
+
+	err = WriteDataToFileAsJSON(fileData, config.FlagFileName)
+	if err != nil {
+		return
 	}
 }
 
@@ -36,10 +118,9 @@ func getURL(c *gin.Context) {
 	id := c.Param("id")
 
 	shortLinks.mu.Lock()
-	c.Writer.Header().Set("Location", shortLinks.links[id])
-	shortLinks.mu.Unlock()
-
+	c.Header("Location", shortLinks.links[id])
 	c.Status(http.StatusTemporaryRedirect)
+	shortLinks.mu.Unlock()
 }
 
 func postURL(c *gin.Context) {
@@ -63,7 +144,12 @@ func postURL(c *gin.Context) {
 	}
 
 	c.Writer.Write([]byte("http://" + config.FlagBaseURL + "/" + id))
+	AddToFileData(id, string(body))
 
+	err = WriteDataToFileAsJSON(fileData, config.FlagFileName)
+	if err != nil {
+		return
+	}
 }
 
 // func for generate string (id) for Get method get/{id}
@@ -74,4 +160,24 @@ func GenerateUniqeString(lenght int) string {
 		b.WriteRune(chars[rand.Intn(len(chars))])
 	}
 	return b.String()
+}
+
+func WriteDataToFileAsJSON(input FileData, filedir string) error {
+
+	data, err := json.MarshalIndent(input, "", " ")
+	if err != nil {
+		return err
+	}
+	file, err := os.OpenFile(filedir, os.O_APPEND|os.O_RDWR, 0666)
+	if err != nil {
+		return os.WriteFile(filedir, data, 0666)
+	}
+	file.Write(data)
+	return nil
+}
+
+func AddToFileData(id string, originalURL string) {
+	fileData.ShortURL = id
+	fileData.OriginalURL = originalURL
+	fileData.UUID = uuid.New().String()
 }
