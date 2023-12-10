@@ -6,10 +6,11 @@ import (
 )
 
 var (
-	FlagPort     string
-	FlagBaseURL  string
-	FlagLogLevel string
-	FlagFileName string
+	FlagPort             string
+	FlagBaseURL          string
+	FlagLogLevel         string
+	FlagFileName         string
+	FlagConnectionString string
 )
 
 func ParseFlags() {
@@ -17,6 +18,8 @@ func ParseFlags() {
 	flag.StringVar(&FlagBaseURL, "b", "localhost"+FlagPort, "base address result")
 	flag.StringVar(&FlagLogLevel, "l", "Info", "logger level")
 	flag.StringVar(&FlagFileName, "f", "/tmp/short-url-db.json", "file name for json")
+	flag.StringVar(&FlagConnectionString, "d", "host=localhost port=5432 user=postgres password=zaxsaqswq1w2 dbname=postgres sslmode=disable", "Database connection string")
+
 	if baseURL, err := os.LookupEnv("BASE_URL"); err {
 		FlagBaseURL = baseURL
 	}
@@ -28,6 +31,9 @@ func ParseFlags() {
 	}
 	if envFileName := os.Getenv("FILE_STORAGE_PATH"); envFileName != "" {
 		FlagFileName = envFileName
+	}
+	if connectionString := os.Getenv("DATABASE_DSN"); connectionString != "" {
+		FlagConnectionString = connectionString
 	}
 	flag.Parse()
 }

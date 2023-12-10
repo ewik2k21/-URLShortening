@@ -1,8 +1,16 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
+	"github.com/ewik2k21/-URLShortening/cmd/config"
+	"github.com/ewik2k21/-URLShortening/internal/app/compressor"
+	"github.com/ewik2k21/-URLShortening/internal/app/logger"
 	"github.com/gin-contrib/gzip"
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"io"
 	"log"
 	"math/rand"
@@ -10,12 +18,7 @@ import (
 	"os"
 	"strings"
 	"sync"
-
-	"github.com/ewik2k21/-URLShortening/cmd/config"
-	"github.com/ewik2k21/-URLShortening/internal/app/compressor"
-	"github.com/ewik2k21/-URLShortening/internal/app/logger"
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
+	"time"
 )
 
 type Links struct {
@@ -42,21 +45,32 @@ type LinkOutput struct {
 var shortLinks = Links{
 	links: make(map[string]string),
 }
+var db *sql.DB
 
 func main() {
-	if err := initializeLogger(); err != nil {
+	var err error
+	if err = initializeLogger(); err != nil {
 		panic(err)
 	}
 	config.ParseFlags()
+
+	ps := config.FlagConnectionString
+	db, err = sql.Open("pgx", ps)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
 	router := gin.New()
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 	router.Use(compressor.DecompressBody())
 	router.Use(logger.RequestLogger())
 	router.Use(logger.ResponseLogger())
+	router.GET("/ping", getPing)
 	router.GET("/:id", getURL)
 	router.POST("/", postURL)
 	router.POST("/api/shorten", postShortenURL)
-	err := router.Run(config.FlagPort)
+	err = router.Run(config.FlagPort)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -67,6 +81,16 @@ func initializeLogger() error {
 		return err
 	}
 	return nil
+}
+
+func getPing(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	d := db
+	if err := d.PingContext(ctx); err != nil {
+		c.Status(http.StatusInternalServerError)
+	}
+	c.Status(http.StatusOK)
 }
 
 func postShortenURL(c *gin.Context) {
