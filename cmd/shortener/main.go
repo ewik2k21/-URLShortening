@@ -84,10 +84,9 @@ func initializeLogger() error {
 }
 
 func getPing(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	d := db
-	if err := d.PingContext(ctx); err != nil {
+	if err := db.PingContext(ctx); err != nil {
 		c.Status(http.StatusInternalServerError)
 	}
 	c.Status(http.StatusOK)
