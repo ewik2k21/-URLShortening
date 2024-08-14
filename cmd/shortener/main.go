@@ -1,7 +1,7 @@
 package main
 
 import (
-	"context"
+	"database/sql"
 	"encoding/json"
 	"io"
 	"log"
@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/gin-contrib/gzip"
 
@@ -19,7 +18,7 @@ import (
 	"github.com/ewik2k21/-URLShortening/internal/app/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type Links struct {
@@ -47,7 +46,7 @@ var shortLinks = Links{
 	links: make(map[string]string),
 }
 
-var conn *pgx.Conn
+var db *sql.DB
 
 func main() {
 	var err error
@@ -55,13 +54,11 @@ func main() {
 		panic(err)
 	}
 	config.ParseFlags()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Second*1))
-	defer cancel()
-	conn, err = pgx.Connect(ctx, config.FlagConnectionString)
+	db, err = sql.Open("pgx", config.FlagConnectionString)
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close(ctx)
+	defer db.Close()
 
 	router := gin.New()
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
@@ -80,7 +77,7 @@ func main() {
 
 func getPing(c *gin.Context) {
 
-	if err := conn.Ping(context.Background()); err != nil {
+	if err := db.Ping(); err != nil {
 		c.Status(http.StatusInternalServerError)
 	}
 	c.Status(http.StatusOK)
