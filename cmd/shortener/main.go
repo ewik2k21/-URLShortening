@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gin-contrib/gzip"
 
@@ -54,11 +55,13 @@ func main() {
 		panic(err)
 	}
 	config.ParseFlags()
-	conn, err = pgx.Connect(context.Background(), config.FlagConnectionString)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Second*1))
+	defer cancel()
+	conn, err = pgx.Connect(ctx, config.FlagConnectionString)
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close(context.Background())
+	defer conn.Close(ctx)
 
 	router := gin.New()
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
