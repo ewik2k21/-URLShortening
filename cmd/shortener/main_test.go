@@ -34,6 +34,7 @@ func Test_postURL(t *testing.T) {
 			want: want{
 				statusCode:  201,
 				contentType: "text/plain",
+				body:        "",
 			},
 			request: "/",
 			body:    "asdasda",

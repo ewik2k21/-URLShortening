@@ -1,8 +1,8 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
-	"github.com/gin-contrib/gzip"
 	"io"
 	"log"
 	"math/rand"
@@ -11,11 +11,14 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/gin-contrib/gzip"
+
 	"github.com/ewik2k21/-URLShortening/cmd/config"
 	"github.com/ewik2k21/-URLShortening/internal/app/compressor"
 	"github.com/ewik2k21/-URLShortening/internal/app/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type Links struct {
@@ -43,11 +46,20 @@ var shortLinks = Links{
 	links: make(map[string]string),
 }
 
+var db *sql.DB
+
 func main() {
-	if err := initializeLogger(); err != nil {
+	var err error
+	if err = initializeLogger(); err != nil {
 		panic(err)
 	}
 	config.ParseFlags()
+	db, err = sql.Open("pgx", config.FlagConnectionString)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
 	router := gin.New()
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 	router.Use(compressor.DecompressBody())
@@ -56,10 +68,19 @@ func main() {
 	router.GET("/:id", getURL)
 	router.POST("/", postURL)
 	router.POST("/api/shorten", postShortenURL)
-	err := router.Run(config.FlagPort)
+	router.GET("/ping", getPing)
+	err = router.Run(config.FlagPort)
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func getPing(c *gin.Context) {
+
+	if err := db.Ping(); err != nil {
+		c.Status(http.StatusInternalServerError)
+	}
+	c.Status(http.StatusOK)
 }
 
 func initializeLogger() error {
