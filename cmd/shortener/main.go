@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"math/rand"
@@ -54,25 +55,44 @@ func main() {
 		panic(err)
 	}
 	config.ParseFlags()
-	db, err = sql.Open("pgx", config.FlagConnectionString)
+
+	router, err := createRouter()
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
 
+	err = router.Run(config.FlagPort)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func createRouter() (*gin.Engine, error) {
+	var err error
 	router := gin.New()
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 	router.Use(compressor.DecompressBody())
 	router.Use(logger.RequestLogger())
 	router.Use(logger.ResponseLogger())
-	router.GET("/:id", getURL)
-	router.POST("/", postURL)
-	router.POST("/api/shorten", postShortenURL)
-	router.GET("/ping", getPing)
-	err = router.Run(config.FlagPort)
-	if err != nil {
-		log.Fatal(err)
+	//logger and compressor
+	if config.FlagConnectionString != "" {
+		fmt.Print(config.FlagConnectionString)
+		//db connection and router methods for db
+		db, err = sql.Open("pgx", config.FlagConnectionString)
+		if err != nil {
+			panic(err)
+		}
+		defer db.Close()
+
+		router.GET("/ping", getPing)
+	} else {
+		fmt.Print("asdasd")
+		router.GET("/:id", getURL)
+		router.POST("/", postURL)
+		router.POST("/api/shorten", postShortenURL)
 	}
+
+	return router, nil
 }
 
 func getPing(c *gin.Context) {
