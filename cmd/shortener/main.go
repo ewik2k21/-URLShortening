@@ -210,12 +210,23 @@ func postURL(c *gin.Context) {
 	}
 
 	c.Writer.Write([]byte("http://" + config.FlagBaseURL + "/" + id))
-	AddToFileData(id, string(body))
 
+	AddToFileData(id, string(body))
 	err = WriteDataToFileAsJSON(fileData, config.FlagFileName)
 	if err != nil {
-		return
+		c.Error(err)
 	}
+
+	if config.FlagConnectionString != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+
+		_, err = db.ExecContext(ctx, "INSERT INTO shortsurl (shorturl, originalurl) VALUES ($1, $2);", id, string(body))
+		if err != nil {
+			c.Error(err)
+		}
+	}
+
 }
 
 // func for generate string (id) for Get method get/{id}
