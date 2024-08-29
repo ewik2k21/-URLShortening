@@ -84,7 +84,6 @@ func createRouter() (*gin.Engine, error) {
 		if err != nil {
 			panic(err)
 		}
-		defer db.Close()
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
@@ -99,14 +98,14 @@ func createRouter() (*gin.Engine, error) {
 		}
 		if !tableCheck {
 			//create table
-			_, err := db.ExecContext(ctx, "CREATE TABLE shortUrls ("+
+			_, err := db.ExecContext(ctx, "CREATE TABLE shorturls ("+
 				"uuid UUID,"+
-				"shortUrl TEXT,"+
-				"originalUrl TEXT);")
+				"shorturl TEXT,"+
+				"originalurl TEXT);")
 			if err != nil {
 				panic(err)
 			}
-			fmt.Println("CREATE TABLE ")
+			fmt.Println("CREATE TABLE")
 		}
 
 		router.GET("/ping", getPing)
@@ -184,7 +183,7 @@ func postShortenURL(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
 
-		_, err = db.ExecContext(ctx, "INSERT INTO shortsurl (shorturl, originalurl) VALUES ($1, $2);", id, linkInput.URL)
+		_, err = db.ExecContext(ctx, "INSERT INTO shorturls (shorturl, originalurl) VALUES ($1, $2);", id, linkInput.URL)
 		if err != nil {
 			c.Error(err)
 		}
@@ -233,7 +232,7 @@ func postURL(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
 
-		_, err = db.ExecContext(ctx, "INSERT INTO shortsurl (shorturl, originalurl) VALUES ($1, $2);", id, string(body))
+		_, err = db.ExecContext(ctx, "INSERT INTO shorturls (shorturl, originalurl) VALUES ($1, $2);", id, string(body))
 		if err != nil {
 			c.Error(err)
 		}
