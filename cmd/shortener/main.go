@@ -178,6 +178,17 @@ func postShortenURL(c *gin.Context) {
 	if err != nil {
 		return
 	}
+
+	if config.FlagConnectionString != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+
+		_, err = db.ExecContext(ctx, "INSERT INTO shortsurl (shorturl, originalurl) VALUES ($1, $2);", id, linkInput.URL)
+		if err != nil {
+			c.Error(err)
+		}
+	}
+
 }
 
 func getURL(c *gin.Context) {
