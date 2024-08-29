@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gin-contrib/gzip"
 
@@ -76,13 +78,36 @@ func createRouter() (*gin.Engine, error) {
 	router.Use(logger.ResponseLogger())
 	//logger and compressor
 	if config.FlagConnectionString != "" {
-		fmt.Print(config.FlagConnectionString)
+		fmt.Println(config.FlagConnectionString)
 		//db connection and router methods for db
 		db, err = sql.Open("pgx", config.FlagConnectionString)
 		if err != nil {
 			panic(err)
 		}
 		defer db.Close()
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+
+		row := db.QueryRowContext(ctx, "SELECT EXISTS ( SELECT * FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'shorturls') AS table_exists;")
+
+		var tableCheck bool
+		err = row.Scan(&tableCheck)
+
+		if err != nil {
+			panic(err)
+		}
+		if !tableCheck {
+			//create table
+			_, err := db.ExecContext(ctx, "CREATE TABLE shortUrls ("+
+				"uuid UUID,"+
+				"shortUrl TEXT,"+
+				"originalUrl TEXT);")
+			if err != nil {
+				panic(err)
+			}
+			fmt.Println("CREATE TABLE ")
+		}
 
 		router.GET("/ping", getPing)
 	} else {
