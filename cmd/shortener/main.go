@@ -176,7 +176,7 @@ func postShortenURL(c *gin.Context) {
 
 	err = WriteDataToFileAsJSON(fileData, config.FlagFileName)
 	if err != nil {
-		return
+		c.Error(err)
 	}
 
 	if config.FlagConnectionString != "" {
