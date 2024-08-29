@@ -18,7 +18,7 @@ func ParseFlags() {
 	flag.StringVar(&FlagBaseURL, "b", "localhost"+FlagPort, "base address result")
 	flag.StringVar(&FlagLogLevel, "l", "Info", "logger level")
 	flag.StringVar(&FlagFileName, "f", "/tmp/short-url-db.json", "file name for json")
-	flag.StringVar(&FlagConnectionString, "d", "host=localhost port=5432 user=postgres password=zaxsaqswq1w2 dbname=yandex", "connection string")
+	flag.StringVar(&FlagConnectionString, "d", "", "connection string")
 	if baseURL, err := os.LookupEnv("BASE_URL"); err {
 		FlagBaseURL = baseURL
 	}

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"math/rand"
@@ -10,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gin-contrib/gzip"
 
@@ -54,25 +57,67 @@ func main() {
 		panic(err)
 	}
 	config.ParseFlags()
-	db, err = sql.Open("pgx", config.FlagConnectionString)
+
+	router, err := createRouter()
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
 
+	err = router.Run(config.FlagPort)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func createRouter() (*gin.Engine, error) {
+	var err error
 	router := gin.New()
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 	router.Use(compressor.DecompressBody())
 	router.Use(logger.RequestLogger())
 	router.Use(logger.ResponseLogger())
-	router.GET("/:id", getURL)
-	router.POST("/", postURL)
-	router.POST("/api/shorten", postShortenURL)
-	router.GET("/ping", getPing)
-	err = router.Run(config.FlagPort)
-	if err != nil {
-		log.Fatal(err)
+	//logger and compressor
+	if config.FlagConnectionString != "" {
+		fmt.Println(config.FlagConnectionString)
+		//db connection and router methods for db
+		db, err = sql.Open("pgx", config.FlagConnectionString)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+
+		row := db.QueryRowContext(ctx, "SELECT EXISTS ( SELECT * FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'shorturls') AS table_exists;")
+
+		var tableCheck bool
+		err = row.Scan(&tableCheck)
+
+		if err != nil {
+			panic(err)
+		}
+		if !tableCheck {
+			//create table
+			_, err := db.ExecContext(ctx, "CREATE TABLE shorturls ("+
+				"uuid UUID,"+
+				"shorturl TEXT,"+
+				"originalurl TEXT);")
+			if err != nil {
+				panic(err)
+			}
+			fmt.Println("CREATE TABLE")
+		}
+
+		router.GET("/ping", getPing)
+		router.GET("/:id", getURL)
+		router.POST("/", postURL)
+		router.POST("/api/shorten", postShortenURL)
+	} else {
+		router.GET("/:id", getURL)
+		router.POST("/", postURL)
+		router.POST("/api/shorten", postShortenURL)
 	}
+	return router, nil
 }
 
 func getPing(c *gin.Context) {
@@ -131,8 +176,19 @@ func postShortenURL(c *gin.Context) {
 
 	err = WriteDataToFileAsJSON(fileData, config.FlagFileName)
 	if err != nil {
-		return
+		c.Error(err)
 	}
+
+	if config.FlagConnectionString != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+
+		_, err = db.ExecContext(ctx, "INSERT INTO shorturls (shorturl, originalurl) VALUES ($1, $2);", id, linkInput.URL)
+		if err != nil {
+			c.Error(err)
+		}
+	}
+
 }
 
 func getURL(c *gin.Context) {
@@ -165,12 +221,23 @@ func postURL(c *gin.Context) {
 	}
 
 	c.Writer.Write([]byte("http://" + config.FlagBaseURL + "/" + id))
-	AddToFileData(id, string(body))
 
+	AddToFileData(id, string(body))
 	err = WriteDataToFileAsJSON(fileData, config.FlagFileName)
 	if err != nil {
-		return
+		c.Error(err)
 	}
+
+	if config.FlagConnectionString != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+
+		_, err = db.ExecContext(ctx, "INSERT INTO shorturls (shorturl, originalurl) VALUES ($1, $2);", id, string(body))
+		if err != nil {
+			c.Error(err)
+		}
+	}
+
 }
 
 // func for generate string (id) for Get method get/{id}
