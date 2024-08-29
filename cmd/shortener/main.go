@@ -110,13 +110,14 @@ func createRouter() (*gin.Engine, error) {
 		}
 
 		router.GET("/ping", getPing)
+		router.GET("/:id", getURL)
+		router.POST("/", postURL)
+		router.POST("/api/shorten", postShortenURL)
 	} else {
-		fmt.Print("asdasd")
 		router.GET("/:id", getURL)
 		router.POST("/", postURL)
 		router.POST("/api/shorten", postShortenURL)
 	}
-
 	return router, nil
 }
 
